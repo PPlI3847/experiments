@@ -2,67 +2,65 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>Gemini AI Chatbot</title>
+  <title>Gemini 이미지 분석</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
-    #chatbox { width: 100%; max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    #messages { height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
-    .msg { margin: 5px 0; }
-    .user { color: blue; font-weight: bold; }
-    .bot { color: green; font-weight: bold; }
-    input { width: 80%; padding: 10px; }
-    button { padding: 10px; }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
+    #result { margin-top: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
   </style>
 </head>
 <body>
-  <div id="chatbox">
-    <h2>🤖 Gemini AI Chatbot</h2>
-    <div id="messages"></div>
-    <input id="userInput" type="text" placeholder="메시지를 입력하세요...">
-    <button onclick="sendMessage()">전송</button>
-  </div>
+  <h2>📷 Gemini 이미지 분석기</h2>
+  <input type="file" id="fileInput" accept="image/*">
+  <button onclick="analyzeImage()">분석하기</button>
+  <div id="result"></div>
 
   <script>
-    const API_KEY = "AIzaSyDOcQBwMh8A3UDv6uCYT1-9mJSD1ZNEgvk"; // ⚠️ 실제 키 넣기 (보안주의!)
-    const MODEL = "gemini-2.5-flash"; // 또는 gemini-1.5-pro
+    const API_KEY = "AIzaSyDOcQBwMh8A3UDv6uCYT1-9mJSD1ZNEgvk"; // ⚠️ API 키 넣기
+    const MODEL = "gemini-2.5-flash"; // 이미지도 지원
 
-    async function sendMessage() {
-      const inputBox = document.getElementById("userInput");
-      const userMessage = inputBox.value.trim();
-      if (!userMessage) return;
-
-      appendMessage("user", userMessage);
-      inputBox.value = "";
-
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ role: "user", parts: [{ text: userMessage }] }]
-            })
-          }
-        );
-
-        const data = await response.json();
-        const botMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || "응답 없음";
-        appendMessage("bot", botMessage);
-
-      } catch (error) {
-        console.error(error);
-        appendMessage("bot", "⚠️ 오류가 발생했어요!");
+    async function analyzeImage() {
+      const fileInput = document.getElementById("fileInput");
+      if (!fileInput.files.length) {
+        alert("이미지를 업로드하세요!");
+        return;
       }
-    }
 
-    function appendMessage(sender, text) {
-      const messages = document.getElementById("messages");
-      const msgDiv = document.createElement("div");
-      msgDiv.className = "msg " + sender;
-      msgDiv.innerHTML = `<span class="${sender}">${sender === "user" ? "👤 사용자" : "🤖 Gemini"}:</span> ${text}`;
-      messages.appendChild(msgDiv);
-      messages.scrollTop = messages.scrollHeight;
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Image = reader.result.split(",")[1];
+
+        try {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    role: "user",
+                    parts: [
+                      { text: "이 이미지에서 보이는 것을 설명해줘." },
+                      { inline_data: { mime_type: file.type, data: base64Image } }
+                    ]
+                  }
+                ]
+              })
+            }
+          );
+
+          const data = await response.json();
+          const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "응답 없음";
+          document.getElementById("result").innerText = resultText;
+
+        } catch (error) {
+          console.error(error);
+          document.getElementById("result").innerText = "⚠️ 오류 발생!";
+        }
+      };
+
+      reader.readAsDataURL(file);
     }
   </script>
 </body>
